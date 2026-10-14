@@ -253,12 +253,50 @@ def generate_visual_prompt(
     api_key: str | None,
 ) -> tuple[str, str]:
     if not api_key:
+        bpm = features["bpm"]
+        tempo = (
+            "slow drifting pulse"
+            if bpm < 75
+            else "laid-back rhythmic pulse"
+            if bpm < 100
+            else "steady rhythmic pulse"
+            if bpm < 125
+            else "driving rhythmic pulse"
+            if bpm < 155
+            else "rapid rhythmic pulse"
+        )
+        centroid = features["spectral_centroid_hz"]
+        tone = (
+            "deep shadowed tones"
+            if centroid < 250
+            else "warm amber tones"
+            if centroid < 700
+            else "clear crystalline tones"
+            if centroid < 1800
+            else "bright vivid tones"
+            if centroid < 4000
+            else "sparkling electric tones"
+        )
+        intensity = (
+            "restrained dynamics"
+            if features["energy"] < 0.15
+            else "balanced dynamics"
+            if features["energy"] < 0.40
+            else "powerful dynamics"
+            if features["energy"] < 0.65
+            else "explosive dynamics"
+        )
         mood = features["mood"]
-        band = features["dominant_frequency_band"].split("(")[0].strip().lower()
-        phase = energy_descriptor(features["energy"]).split("(")[1].rstrip(")").lower()
+        if mood == "unavailable":
+            mood = "atmospheric" if centroid < 1800 else "electric"
+        band = features["dominant_frequency_band"].split("(")[0].strip()
+        band = band.replace("Low-End / Sub-Bass Focus", "sub-bass")
+        band = band.replace("Mid-Range / Vocal & Synth Focus", "voice and synth")
+        band = band.replace("High-End / Percussion & Hi-Hat Focus", "percussion and hi-hat")
         prompt = (
-            f"abstract {mood} dreamscape, {band} pulse, {phase}, "
-            "cinematic lighting, layered atmosphere, drifting particles, slow camera movement"
+            f"abstract {mood} dreamscape, {band} textures, {tempo}, {tone}, "
+            f"{intensity}, cinematic lighting, layered atmosphere, drifting particles, "
+            "slow camera movement"
         )
         return _trim_prompt(prompt), "Local prompt (no Groq API key)"
 
@@ -327,10 +365,14 @@ def _analyze_window(
         else "not extracted"
     )
     band = dominant_frequency_band(audio, sample_rate)
+    spectral_centroid = float(
+        np.mean(librosa.feature.spectral_centroid(y=audio, sr=sample_rate))
+    )
     features = {
         "timestamp_sec": round(start_seconds, 1),
         "bpm": bpm,
         "energy": round(energy, 4),
+        "spectral_centroid_hz": round(spectral_centroid, 1),
         "primary_genre": primary_genre,
         "secondary_genre": secondary_genre,
         "mood": mood,

@@ -40,7 +40,8 @@ per window, with a JSON download.
   version or leave genre/mood classification off.
 - **Groq prompt generation:** enter a Groq API key in the sidebar or set
   `GROQ_API_KEY` before launching. The key is not saved by the app. Without a
-  key, the app creates a local template-based prompt instead.
+  key, the app creates sound-aware local prompts using each window's tempo,
+  energy, spectral brightness, and dominant frequency band.
 
 MP3 and some other formats may need FFmpeg available on `PATH`. WAV files can
 be used to test the app without installing FFmpeg.
