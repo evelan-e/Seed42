@@ -1,0 +1,4 @@
+librosa>=0.10.2,<1
+numpy>=1.26,<3
+openai>=1.30,<3
+streamlit>=1.35,<2
