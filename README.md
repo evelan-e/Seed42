@@ -27,17 +27,9 @@ per window, with a JSON download.
 
 ## Optional models and LLM
 
-- **Genre and mood:** select *Classify genre and mood* in the sidebar. The
-  first run downloads Essentia's Discogs and mood models into
-  `essentia_models/`. Essentia's TensorFlow package may require a supported
-  Python/platform combination; if it cannot be installed on your Windows
-  setup, run the app in WSL or leave this option off.
 - **Lyric themes:** select *Extract lyric themes*. This needs Faster-Whisper
-  and downloads its `tiny` model on first use.
-- To install both optional model packages, try
-  `python -m pip install -r requirements-models.txt`. Essentia may not install
-  on every Windows/Python combination; if so, use WSL with a supported Python
-  version or leave genre/mood classification off.
+  and downloads its `tiny` model on first use. Install it with
+  `python -m pip install -r requirements-models.txt`.
 - **Groq prompt generation:** enter a Groq API key in the sidebar or set
   `GROQ_API_KEY` before launching. The key is not saved by the app. Without a
   key, the app creates sound-aware local prompts using each window's tempo,
