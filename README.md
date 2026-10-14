@@ -1,7 +1,5 @@
 # Local Audio Analyser
 
-jcc heree see me??
-
 A local Streamlit app for uploading a song, analysing it in 30- or 60-second
 windows, and generating a short visual prompt for each window. It does not
 connect to or send prompts to the seed42 Control API.
