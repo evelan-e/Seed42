@@ -52,7 +52,27 @@ body {
 .title { margin: 0; font-size: var(--step-1); font-weight: 600; letter-spacing: 0.01em; color: var(--bright); white-space: nowrap; }
 .title span { font-weight: 300; color: var(--muted); }
 
-.source { display: flex; gap: 0.5rem; }
+.source { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+
+/* Audio input picker and live level meter */
+.input-select {
+  max-width: 14rem; padding: 0.4rem 0.6rem;
+  font: inherit; font-size: var(--step-0); color: var(--text);
+  background: var(--surface); border: 1px solid #2c2c2e; border-radius: 999px;
+  text-overflow: ellipsis; cursor: pointer;
+}
+.input-select:hover { border-color: #46464a; }
+.input-select.is-missing { border-color: var(--warn); color: var(--warn); }
+.input-select:disabled { opacity: 0.5; cursor: not-allowed; }
+.level { display: inline-flex; align-items: center; gap: 0.5rem; font-size: var(--step-0); color: var(--muted); }
+.meter { position: relative; width: 6rem; height: 0.45rem; border-radius: 999px; background: var(--raise); overflow: hidden; }
+.meter i { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--ph-build); transition: width 0.15s linear; }
+.meter b { position: absolute; top: 0; bottom: 0; width: 2px; left: 0; background: var(--bright); }
+.level.ok .meter i { background: var(--ok); }
+.level.warn .meter i { background: var(--warn); }
+.level.err .meter i, .level.err .meter b { background: var(--err); }
+.level.warn .level-text { color: var(--warn); }
+.level.err .level-text { color: var(--err); }
 .btn {
   font: inherit; font-size: var(--step-0); font-weight: 500;
   padding: 0.45rem 0.9rem; border-radius: 999px;

@@ -1,12 +1,11 @@
-"""seed42 Control API client (notebook "Mock Server Connection" cells).
+"""seed42 Control API client: log in, create a stream, send prompts.
 
-Same requests as the notebook's Seed42Client. The difference is that every
-call reports what happened -- status code, attempts, latency -- instead of
-raising, because showing that on the test page is the point.
+Every call reports what happened -- status code, attempts, latency -- instead
+of raising, because showing that on the test page is the point.
 
-Note: this follows the notebook and the mock (PATCH /api/streams). The Control
-API PDF describes POST /api/prompts with {stream_id, body}. When you point this
-at the real API, check which one it serves and change send_prompt() to match.
+Note: this matches the mock (PATCH /api/streams). The Control API PDF describes
+POST /api/prompts with {stream_id, body}. When you point this at the real API,
+check which one it serves and change send_prompt() to match.
 """
 import logging
 import threading

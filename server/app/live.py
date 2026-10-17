@@ -1,4 +1,4 @@
-"""Live input over a WebSocket (implementation plan 1.2 B, simplified).
+"""Live input over a WebSocket: microphone audio in, one result per window out.
 
 The page sends mono Float32 PCM at 22050 Hz in ~0.5 s chunks. The server keeps
 a rolling buffer one window long, and every `step` seconds runs that window

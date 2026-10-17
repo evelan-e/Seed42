@@ -1,9 +1,8 @@
-"""Loads every model once and keeps it in memory (notebook section 1.3).
+"""Loads every model once and keeps it in memory.
 
 Each component loads independently and reports its own status, so a failed
-download disables one feature instead of the whole pipeline -- the same
-degradation the notebook has (genre/mood become "unavailable", BPM falls back
-to Librosa).
+download disables one feature instead of the whole pipeline: genre and mood
+become "unavailable", or tempo falls back to Librosa.
 """
 import collections
 import collections.abc

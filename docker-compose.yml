@@ -25,5 +25,19 @@ services:
     depends_on:
       - mock
 
+  # Baseline vs refined comparison: docker compose run --rm eval [args]
+  # Reads tracks from eval/tracks and writes eval/results. See eval/compare.py.
+  eval:
+    build: ./server
+    platform: linux/amd64
+    profiles: ["eval"]           # not started by docker compose up
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - models:/models
+      - ./eval:/srv/eval
+    entrypoint: ["python", "eval/compare.py"]
+
 volumes:
   models:

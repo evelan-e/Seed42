@@ -1,8 +1,10 @@
-"""Feature extraction for one window of audio (notebook sections 2 and 4).
+"""Feature extraction for one window of audio.
 
-The maths is unchanged from the notebook. Two additions for the test page:
-each result carries short machine keys (phase, band) next to the readable
-labels, and per-stage timings.
+Tempo (Madmom, falling back to Librosa), energy and its phase, the loudest
+frequency band, genre and mood (Essentia) and lyric keywords (Whisper), plus
+the one-sentence description the LLM turns into an image prompt. Each result
+carries short machine keys (phase, band) next to the readable labels, and
+per-stage timings.
 """
 import io
 import time
@@ -15,7 +17,7 @@ import soundfile as sf
 from . import config
 from .models import MODELS, STOPWORDS
 
-PHASES = [  # (upper RMS bound, key, label) -- thresholds from the notebook
+PHASES = [  # (upper RMS bound, key, label)
     (0.15, "breakdown", "Low Energy / Breakdown Phase"),
     (0.40, "groove", "Moderate Energy / Steady Groove Phase"),
     (0.65, "build", "High Energy / Build-up Phase"),
@@ -158,9 +160,8 @@ def get_energy_descriptor(rms):
 def build_llm_input(features, energy_desc, dominant_band):
     """One sentence describing the window, used as the LLM's input.
 
-    Identical to the notebook when every model is loaded. When one is missing
-    (lite mode, a failed download) its part is left out instead of sending the
-    LLM the word "unavailable".
+    When a model is missing (lite mode, a failed download) its part is left
+    out instead of sending the LLM the word "unavailable".
     """
     energy_phase = energy_desc.split("(")[1].rstrip(")")
     band_name = dominant_band.split("(")[0].strip()

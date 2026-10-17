@@ -17,6 +17,14 @@
       <label class="btn btn-primary" for="fileInput">Choose track</label>
       <input id="fileInput" type="file" accept="audio/*,.mp3,.wav,.flac,.ogg,.m4a" hidden>
       <button id="liveBtn" class="btn" type="button" aria-pressed="false">Listen live</button>
+      <label class="sr-only" for="inputSelect">Audio input</label>
+      <select id="inputSelect" class="input-select" title="Audio input for Listen live: a microphone, a desk soundcard or a virtual cable">
+        <option value="">Default input</option>
+      </select>
+      <span class="level" id="level" hidden>
+        <span class="meter" aria-hidden="true"><i id="meterFill"></i><b id="meterPeak"></b></span>
+        <span class="level-text" id="levelText" role="status"></span>
+      </span>
     </div>
 
     <fieldset class="opts" id="opts">

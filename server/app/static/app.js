@@ -8,7 +8,9 @@
   const $ = (id) => document.getElementById(id);
   const el = {
     file: $("fileInput"), fileLabel: document.querySelector('label[for="fileInput"]'),
-    live: $("liveBtn"), windowSec: $("windowSec"), stepSec: $("stepSec"),
+    live: $("liveBtn"), input: $("inputSelect"),
+    level: $("level"), meterFill: $("meterFill"), meterPeak: $("meterPeak"), levelText: $("levelText"),
+    windowSec: $("windowSec"), stepSec: $("stepSec"),
     useLlm: $("useLlm"), sendStream: $("sendStream"),
     pillModels: $("pillModels"), pillLlm: $("pillLlm"), pillStream: $("pillStream"),
     healthBody: $("healthBody"),
@@ -308,6 +310,122 @@
     el.run.append(text);
   }
 
+  // ---------------------------------------------------------------- audio input
+  // Any input the system has: a microphone, a desk soundcard or audio interface,
+  // or a virtual cable carrying DJ software's output. The choice is kept in this
+  // browser so a gig setup doesn't fall back to the laptop mic after a reload.
+  const INPUT_KEY = "seed42.input";       // {id, label}
+  const MISSING = "missing";
+  let inputsNamed = false;
+  const store = {
+    get() { try { return JSON.parse(localStorage.getItem(INPUT_KEY)); } catch { return null; } },
+    set(v) { try { v ? localStorage.setItem(INPUT_KEY, JSON.stringify(v)) : localStorage.removeItem(INPUT_KEY); } catch {} },
+  };
+
+  async function listInputs() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+      el.input.hidden = true;
+      return;
+    }
+    let inputs = [];
+    try {
+      inputs = (await navigator.mediaDevices.enumerateDevices())
+        .filter((d) => d.kind === "audioinput" && d.deviceId !== "default" && d.deviceId !== "communications");
+    } catch {}
+    // Browsers hide device names until the page has been allowed to use audio input
+    const named = inputsNamed = inputs.some((d) => d.label);
+    const saved = store.get();
+    el.input.innerHTML = "";
+    el.input.append(new Option("Default input", ""));
+    inputs.forEach((d, i) => el.input.append(new Option(d.label || `Input ${i + 1}`, d.deviceId)));
+    if (!named) {
+      const o = new Option("Allow audio access to see input names", "", false, false);
+      o.disabled = true;
+      el.input.append(o);
+    }
+
+    el.input.classList.remove("is-missing");
+    if (!saved) { el.input.value = ""; return; }
+    const match = inputs.find((d) => d.deviceId === saved.id) || inputs.find((d) => d.label && d.label === saved.label);
+    if (match) {
+      el.input.value = match.deviceId;
+      if (match.deviceId !== saved.id) store.set({ id: match.deviceId, label: match.label });
+    } else if (named) {
+      // The saved input is unplugged: say so instead of quietly using another one
+      const o = new Option(`${saved.label} (not connected)`, MISSING);
+      el.input.prepend(o);
+      el.input.value = MISSING;
+      el.input.classList.add("is-missing");
+    } else {
+      el.input.value = "";
+    }
+  }
+
+  // Asking for audio once unlocks the device names; the stream is closed straight away
+  async function unlockInputNames() {
+    if (inputsNamed || !navigator.mediaDevices) return;
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+      s.getTracks().forEach((t) => t.stop());
+      await listInputs();
+    } catch {}
+  }
+
+  el.input.addEventListener("pointerdown", unlockInputNames);
+  el.input.addEventListener("keydown", unlockInputNames);
+  el.input.addEventListener("change", () => {
+    const o = el.input.selectedOptions[0];
+    if (el.input.value === MISSING) return;
+    store.set(el.input.value ? { id: el.input.value, label: o.text } : null);
+    el.input.classList.remove("is-missing");
+    el.input.querySelector(`option[value="${MISSING}"]`)?.remove();
+  });
+  if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+    navigator.mediaDevices.addEventListener("devicechange", () => { if (!S.live) listInputs(); });
+  }
+
+  // ---------------------------------------------------------------- input level
+  // The energy phases use fixed loudness thresholds tuned on finished tracks, so a
+  // desk output with the gain too low reads as a breakdown all night, and a clipping
+  // one as a drop. The meter warns about both before the set starts.
+  const LEVEL = {
+    silence: 0.01,      // the server's SCENE_SILENCE_RMS
+    quiet: 0.05,        // average under this for LEVEL.span: raise the gain
+    clip: 0.99,         // a sample this close to full scale
+    span: 20,           // half-second chunks averaged: 10 s
+  };
+
+  function updateLevel(L, chunk) {
+    let s = 0;
+    for (let i = 0; i < chunk.length; i++) s += chunk[i] * chunk[i];
+    const rms = Math.sqrt(s / chunk.length);
+    L.levels.push({ rms, peak: L.peak });
+    if (L.levels.length > LEVEL.span) L.levels.shift();
+    L.peak = 0;
+
+    // dBFS from -60 to 0 across the meter
+    const pos = (v) => `${Math.max(0, Math.min(100, ((20 * Math.log10(Math.max(v, 1e-6))) + 60) / 60 * 100))}%`;
+    el.meterFill.style.width = pos(rms);
+    el.meterPeak.style.left = `calc(${pos(L.levels.at(-1).peak)} - 2px)`;
+
+    const recent = L.levels.slice(-4);   // the last 2 s
+    const avg = Math.sqrt(L.levels.reduce((a, l) => a + l.rms * l.rms, 0) / L.levels.length);
+    let state, text;
+    if (recent.some((l) => l.peak >= LEVEL.clip)) {
+      [state, text] = ["err", "Clipping: lower the input gain"];
+    } else if (L.levels.length < LEVEL.span) {
+      [state, text] = ["", "Checking level"];
+    } else if (avg < LEVEL.silence) {
+      [state, text] = ["warn", "No signal: check the input and cable"];
+    } else if (avg < LEVEL.quiet) {
+      [state, text] = ["warn", "Quiet: raise the gain, or energy reads as breakdown"];
+    } else {
+      [state, text] = ["ok", "Level OK"];
+    }
+    el.level.className = `level ${state}`.trim();
+    if (el.levelText.textContent !== text) el.levelText.textContent = text;
+  }
+
   // ---------------------------------------------------------------- live mode
   const WORKLET = `
     class Tap extends AudioWorkletProcessor {
@@ -324,6 +442,12 @@
     registerProcessor("tap", Tap);`;
 
   async function startLive() {
+    if (el.input.value === MISSING) {
+      return notice(`The saved input, ${store.get().label}, isn't connected. Plug it in, or choose another input.`);
+    }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      return notice("This browser blocks audio input here. Open the page at http://localhost:8000, or over HTTPS.");
+    }
     await cancelJob();
     resetView();
     const opts = readOpts();
@@ -332,15 +456,25 @@
     el.player.hidden = true; el.player.removeAttribute("src");
 
     let stream;
+    const deviceId = el.input.value;
     try {
       // Processing off: echo cancellation and noise suppression are built for speech and damage music
       stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+        audio: {
+          echoCancellation: false, noiseSuppression: false, autoGainControl: false,
+          ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
+        },
       });
     } catch (e) {
       S.mode = null;
-      return notice("Microphone access was blocked. Allow it for this page in the browser's site settings, then try again.");
+      if (e.name === "OverconstrainedError" || e.name === "NotFoundError") {
+        listInputs();
+        return notice("That input isn't available any more. Check it's plugged in, then choose it again.");
+      }
+      return notice("Audio input was blocked. Allow it for this page in the browser's site settings, then try again.");
     }
+    listInputs();   // device names are visible now that access is allowed
+    const inputName = (stream.getAudioTracks()[0] || {}).label || "the default input";
 
     const ac = new (window.AudioContext || window.webkitAudioContext)();
     const blobUrl = URL.createObjectURL(new Blob([WORKLET], { type: "application/javascript" }));
@@ -356,7 +490,8 @@
     ws.binaryType = "arraybuffer";
 
     const L = S.live = { ws, ac, stream, tap, ratio: ac.sampleRate / SR, pending: new Float32Array(0),
-                         out: [], outLen: 0, levelCarry: new Float32Array(0), started: false };
+                         out: [], outLen: 0, levelCarry: new Float32Array(0), started: false,
+                         inputName, levels: [], peak: 0 };
 
     ws.onopen = () => ws.send(JSON.stringify({ type: "start", ...opts }));
     ws.onmessage = (ev) => {
@@ -382,10 +517,17 @@
     el.live.textContent = "Stop listening";
     el.fileLabel.classList.add("is-disabled");
     el.file.disabled = true;
+    el.input.disabled = true;
+    el.level.className = "level";
+    el.levelText.textContent = "Checking level";
+    el.meterFill.style.width = "0";
+    el.level.hidden = false;
     renderLiveLine();
   }
 
   function onLiveSamples(L, block) {
+    // Peak before resampling, so clipping isn't smoothed away
+    for (let i = 0; i < block.length; i++) { const a = Math.abs(block[i]); if (a > L.peak) L.peak = a; }
     // Append and resample to 22050 Hz (linear; fine for these features)
     const merged = new Float32Array(L.pending.length + block.length);
     merged.set(L.pending); merged.set(block, L.pending.length);
@@ -406,6 +548,7 @@
       L.out = []; L.outLen = 0;
       if (L.started && L.ws.readyState === 1) L.ws.send(chunk.buffer);
       pushLevels(L, chunk);
+      updateLevel(L, chunk);
       S.liveElapsed += chunk.length / SR;
       renderLiveLine();
       drawStrip();
@@ -428,7 +571,7 @@
     el.run.innerHTML = "";
     const n = S.records.filter((r) => !r.skipped).length;
     const wait = Math.max(0, S.windowSec - S.liveElapsed);
-    el.run.append(node("strong", "Listening"), ` for ${fmt(S.liveElapsed)}. `);
+    el.run.append(node("strong", "Listening"), ` to ${S.live ? S.live.inputName : "input"} for ${fmt(S.liveElapsed)}. `);
     el.run.append(wait > 0 ? `First window in ${Math.ceil(wait)} s.` : `${n} window${n === 1 ? "" : "s"} analysed.`);
   }
 
@@ -443,6 +586,9 @@
     el.live.textContent = "Listen live";
     el.fileLabel.classList.remove("is-disabled");
     el.file.disabled = false;
+    el.input.disabled = false;
+    el.level.hidden = true;
+    listInputs();
     if (S.mode === "live") {
       const n = S.records.filter((r) => !r.skipped).length;
       el.run.innerHTML = "";
@@ -812,7 +958,7 @@
     if (f && !S.live) startFile(f);
   });
   addEventListener("keydown", (e) => {
-    if (e.target.closest("input, textarea")) return;
+    if (e.target.closest("input, textarea, select")) return;
     const real = S.records.map((r, i) => (r.skipped ? -1 : i)).filter((i) => i >= 0);
     if (!real.length) return;
     const pos = real.indexOf(S.selected);
@@ -821,5 +967,6 @@
   });
 
   refreshHealth();
+  listInputs();
   drawStrip();
 })();

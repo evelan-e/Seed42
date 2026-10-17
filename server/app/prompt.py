@@ -1,7 +1,7 @@
-"""Audio description -> short SDXL-Turbo prompt (notebook section 5.1).
+"""Audio description -> short SDXL-Turbo prompt, written by an LLM on Groq.
 
-The Colab secret is replaced by GROQ_API_KEY. Without a key the pipeline still
-runs and uses FALLBACK_PROMPT, so the Control API path can be tested anyway.
+Needs GROQ_API_KEY. Without a key the pipeline still runs and uses
+FALLBACK_PROMPT, so the Control API path can be tested anyway.
 """
 import logging
 import time

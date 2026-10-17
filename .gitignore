@@ -7,3 +7,6 @@ server/essentia_models/
 essentia_models/
 .streamlit/secrets.toml
 .test-*
+eval/tracks/*
+!eval/tracks/labels.example.csv
+eval/results/

@@ -3,7 +3,7 @@
     uvicorn app.main:app --port 8000      (from server/)
     open http://localhost:8000
 
-Endpoints match Part 1.2 of the implementation plan, under /api:
+Endpoints, all under /api (the test page in static/ uses all but GET /api/scene):
   POST   /api/analyze          upload a track, returns {id}
   GET    /api/analyze/{id}     status + results; ?since=N returns only new windows
   DELETE /api/analyze/{id}     stop a job

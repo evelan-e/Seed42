@@ -1,6 +1,6 @@
 """Window pipeline plus the background worker for uploaded files.
 
-run_window() is the notebook's one-minute engine for a single window:
+run_window() takes one window through the whole pipeline:
 features -> input sentence -> scene decision (scene.py) -> Control API.
 The scene decides whether the LLM is called at all; a held scene re-sends
 the same prompt.
