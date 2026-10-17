@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>seed42 pipeline test</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="bar">
+    <h1 class="title">seed42 <span>pipeline test</span></h1>
+
+    <div class="source">
+      <label class="btn btn-primary" for="fileInput">Choose track</label>
+      <input id="fileInput" type="file" accept="audio/*,.mp3,.wav,.flac,.ogg,.m4a" hidden>
+      <button id="liveBtn" class="btn" type="button" aria-pressed="false">Listen live</button>
+    </div>
+
+    <fieldset class="opts" id="opts">
+      <legend class="sr-only">Analysis settings</legend>
+      <label class="num">Window <input id="windowSec" type="number" min="2" max="120" step="1" value="20"> s</label>
+      <label class="num">Step <input id="stepSec" type="number" min="1" max="120" step="1" value="10"> s</label>
+      <label class="check"><input id="useLlm" type="checkbox" checked> Generate prompt</label>
+      <label class="check"><input id="sendStream" type="checkbox" checked> Send to stream</label>
+    </fieldset>
+
+  </header>
+
+  <main>
+    <section class="strip-wrap" aria-label="Energy over time">
+      <div class="strip-head">
+        <p class="run" id="runLine">No track loaded.</p>
+        <div class="run-actions">
+        <details class="health" id="health">
+          <summary>
+            <span class="pill" id="pillModels"><i></i><b>Models</b> <span>checking</span></span>
+            <span class="pill" id="pillLlm"><i></i><b>LLM</b> <span>checking</span></span>
+            <span class="pill" id="pillStream"><i></i><b>Stream</b> <span>checking</span></span>
+          </summary>
+          <div class="health-body" id="healthBody"></div>
+        </details>
+          <button id="cancelBtn" class="btn btn-quiet" type="button" hidden>Stop analysis</button>
+          <button id="resetStreamBtn" class="btn btn-quiet" type="button" title="End the current stream; the next window creates a new one">New stream</button>
+        </div>
+      </div>
+      <div class="strip" id="strip">
+        <canvas id="stripCanvas" aria-hidden="true"></canvas>
+        <div class="strip-tip" id="stripTip" hidden></div>
+      </div>
+      <ol class="legend" aria-label="Energy phases">
+        <li><i class="ph-breakdown"></i>Breakdown <span>under 0.15</span></li>
+        <li><i class="ph-groove"></i>Steady groove <span>0.15 to 0.40</span></li>
+        <li><i class="ph-build"></i>Build-up <span>0.40 to 0.65</span></li>
+        <li><i class="ph-drop"></i>Drop <span>0.65 and up</span></li>
+      </ol>
+      <audio id="player" controls hidden></audio>
+    </section>
+
+    <p class="notice" id="notice" role="status" hidden></p>
+
+    <section class="scene" id="scene" aria-labelledby="sceneTitle">
+      <div class="scene-head">
+        <h2 id="sceneTitle">Current scene</h2>
+        <p class="scene-status" id="sceneStatus">No scene yet. The first audible window sets one, or type your own.</p>
+      </div>
+      <label class="sr-only" for="sceneText">Scene prompt</label>
+      <textarea id="sceneText" rows="2" spellcheck="false" placeholder="Type a prompt, for example: flooded cathedral, wet stone, teal light shafts, drifting mist, slow dolly forward"></textarea>
+      <div class="scene-actions">
+        <button id="sceneSend" class="btn btn-primary" type="button">Send to stream</button>
+        <label class="check" title="Every window re-sends this prompt unchanged until you unlock it"><input id="sceneLock" type="checkbox"> Lock scene</label>
+        <button id="sceneRevert" class="btn btn-quiet" type="button" hidden>Discard edits</button>
+        <span class="scene-result" id="sceneResult" role="status"></span>
+      </div>
+      <p class="scene-help">Unlocked, the pipeline keeps your prompt and adjusts it when the music changes. Locked, it re-sends it every window. <kbd>Ctrl</kbd> + <kbd>Enter</kbd> sends.</p>
+    </section>
+
+    <section class="windows" id="windows" aria-live="polite">
+      <div class="empty" id="empty">
+        <p>Choose a track or listen live. Each window's analysis, the prompt it produces, and the Control API's answer appear here.</p>
+        <p class="sub">You can also drop an audio file anywhere on this page.</p>
+      </div>
+    </section>
+  </main>
+
+  <div class="drop" id="dropOverlay" hidden><p>Drop to analyse</p></div>
+
+  <template id="rowTpl">
+    <article class="win">
+      <div class="win-side">
+        <a class="win-time" href="#"></a>
+        <p class="win-phase"><i></i><span></span></p>
+        <p class="win-scene"><i></i><span></span></p>
+        <p class="win-api"><i></i><span></span></p>
+      </div>
+      <div class="win-main">
+        <p class="win-prompt"></p>
+        <p class="win-meta"></p>
+        <p class="win-note"></p>
+        <p class="win-input"></p>
+        <dl class="facts"></dl>
+        <ul class="win-errors"></ul>
+      </div>
+    </article>
+  </template>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

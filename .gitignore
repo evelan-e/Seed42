@@ -1,7 +1,9 @@
-.venv/
+.env
 __pycache__/
 *.py[cod]
+.venv/
+server/.venv/
+server/essentia_models/
 essentia_models/
-.env
 .streamlit/secrets.toml
 .test-*

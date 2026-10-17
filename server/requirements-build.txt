@@ -1,0 +1,6 @@
+# Installed first: Madmom compiles against these and is built without
+# build isolation, so they must already be in the environment.
+numpy==2.5.3
+Cython==3.3.0
+setuptools==80.9.0
+wheel==0.48.0

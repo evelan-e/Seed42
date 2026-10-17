@@ -1,0 +1,29 @@
+# docker compose up --build      then open http://localhost:8000
+services:
+  mock:
+    image: python:3.12-slim
+    working_dir: /mock
+    volumes:
+      - ./mock:/mock:ro
+    # Add flags here to test failure handling, e.g. --fail-rate 0.2, --unstable, --not-ready 409
+    command: ["python", "-u", "mock-control-api.py", "--host", "0.0.0.0"]
+    ports:
+      - "8787:8787"
+
+  pipeline:
+    build: ./server
+    platform: linux/amd64        # essentia-tensorflow has no Linux arm64 wheels
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      CONTROL_API_URL: http://mock:8787
+    volumes:
+      - models:/models
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mock
+
+volumes:
+  models:
