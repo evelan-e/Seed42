@@ -1,0 +1,21 @@
+# Tested together on Python 3.12 (Linux x86_64). essentia-tensorflow 2.1b6.dev1389
+# also ships macOS arm64 and x86_64 wheels for 3.12; there are no Linux arm64 wheels.
+# Install requirements-build.txt first, then this file with --no-build-isolation.
+
+# Server
+fastapi==0.142.2
+uvicorn[standard]==0.54.0
+python-multipart==0.0.32
+python-dotenv==1.2.3
+requests==2.34.2
+
+# Audio and models
+librosa==1.0.0
+soundfile==0.14.0
+essentia-tensorflow==2.1b6.dev1389
+faster-whisper==1.2.1
+ctranslate2==4.8.2
+madmom @ git+https://github.com/CPJKU/madmom.git@27f032e8947204902c675e5e341a3faf5dc86dae
+
+# LLM (Groq through the OpenAI SDK)
+openai==3.22.1

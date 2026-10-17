@@ -1,0 +1,11 @@
+# Lite mode only (PIPELINE_MODE=lite): Librosa features, LLM and Control API,
+# without Madmom, Essentia or Whisper. Installs in under a minute anywhere.
+fastapi==0.142.2
+uvicorn[standard]==0.54.0
+python-multipart==0.0.32
+python-dotenv==1.2.3
+requests==2.34.2
+numpy==2.5.3
+librosa==1.0.0
+soundfile==0.14.0
+openai==3.22.1
