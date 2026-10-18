@@ -410,10 +410,20 @@ For a report, a few rows of `base_prompt` next to `ref_prompt`, and the `base_bp
 
 ## Connecting to the real Control API
 
-The client and the mock send prompts with `PATCH /api/streams`. The Control API
-PDF (20 Aug 2026) documents `POST /api/prompts` with `{stream_id, body}`. Confirm
-which one the real API serves and update `send_prompt()` in `server/app/control.py`,
-then set `CONTROL_API_URL`, `CONTROL_API_EMAIL` and `CONTROL_API_PASSWORD` in `.env`.
+`server/app/control.py` follows seed42's `control-api.md`, which the mock in `mock/`
+implements: log in at `/api/auth`, create a stream, `PATCH /api/streams` with
+`{id, params}`. Don't edit the mock; it is seed42's. Switching to the real API is
+only `.env`:
+
+- **Testing live with your own account:** set `CONTROL_API_URL=https://seed42.app`
+  and your seed42 `CONTROL_API_EMAIL` and `CONTROL_API_PASSWORD`. The app creates a
+  stream of its own, as with the mock.
+- **A real performance:** seed42's own client creates the stream and gives you its
+  id. Also set `CONTROL_API_STREAM_ID` to that id. The app then sends to that stream
+  only, and never creates or ends one, so **New stream** is disabled. If that stream
+  ends, prompts fail with a message saying so until you set the new id.
+
+Leave `CONTROL_API_URL` unset to use the mock, under Docker or not.
 
 ### Testing failure handling with the mock
 
@@ -424,9 +434,63 @@ yourself with `python mock/mock-control-api.py --help`:
 - `--unstable` ends streams after 45 s and makes DELETE fail
 - `--not-ready 409` uses the other legal not-ready code
 - `--async-create` answers 202 on create and requires polling
+- `--ready-after 20` keeps a new stream not ready for 20 s instead of 4
 
 The mock also prints a warning if a prompt update carries a creation-time field, which
 on the real API would reload the pipeline and stop the show for about 30 seconds.
+
+seed42's guide (`control-api.md`, section 6) asks for one run against each of
+`--not-ready 404`, `--not-ready 409`, `--async-create` and `--unstable` before asking
+for live access.
+
+#### Running a test
+
+1. **Set the flags** on the mock's `command` line in `docker-compose.yml`. A flag and
+   its value are two separate items:
+
+   ```yaml
+   command: ["python", "-u", "mock-control-api.py", "--host", "0.0.0.0", "--fail-rate", "0.2"]
+   ```
+
+   `"--fail-rate 0.2"` as one item makes the mock exit with *unrecognized arguments*,
+   and the app then reports *Failed to resolve 'mock'*. Keep `"--host", "0.0.0.0"`, or
+   the app can't reach the mock.
+2. **Restart:** `docker compose up -d`. Use this rather than `docker compose up -d mock`,
+   which recreates the mock but leaves the app stopped (the browser shows
+   `ERR_CONNECTION_REFUSED`). Until you restart, the old mock and its flags keep running.
+3. **Watch the mock:** `docker compose logs -f mock`. This stops by itself whenever the
+   mock is restarted, so run it again after step 2. Ctrl-C stops watching, not the mock.
+4. **Upload a track**, or listen live, and check the results below.
+5. **Put the line back** when done (no flags after `"0.0.0.0"`) and `docker compose up -d`.
+
+After a restart the mock has forgotten the app's stream, so the first call is answered
+`404` (stream not found) and the app creates a new stream. That's expected.
+
+The pipeline log (`docker compose logs -f pipeline`) shows the page talking to the app,
+so it stays `200 OK` throughout. The Control API results are on the page (each window's
+row, red marks on the lane, the Stream pill) and in the mock's log.
+
+#### What each test should show
+
+| Flags | Mock log | Page |
+|---|---|---|
+| `--not-ready 404 --ready-after 20` | `POST 201`, then `PATCH 404` three times per window, then `200` | `404 from stream`, *Still not ready after 3 tries*, then `200` |
+| `--not-ready 409 --ready-after 20` | The same with `409` | `409 from stream`, then `200` |
+| `--async-create` | `POST 202`, `GET ?id=…` every 2 s until ready, then `PATCH 200` | `200`, with no retries |
+| `--unstable` (let it run over a minute) | `PATCH 200` until 45 s, `PATCH 502`, then `POST 201` for a new stream and `200` again | One `502 from stream`, *The stream has ended*, then `200` |
+| `--fail-rate 0.2` | About one call in five `502`, then a new stream | `502 from stream` on some windows |
+
+Without `--ready-after 20` a stream is ready after 4 s, so the third try succeeds and
+the page shows `200, 3 tries` instead of the failure. That tests recovery; the longer
+wait tests giving up.
+
+A 404 that says *not found* (the stream doesn't exist) is not retried; only *not ready*
+is. With an uploaded file the windows run faster than real time, so several windows can
+each make their three tries while one stream is starting.
+
+With `--fail-rate`, the mock answers 502 before reading the request body, then reads
+that leftover body as a new request and logs `code 400, message Bad request version`.
+Those lines come from the mock, not from the app, and can be ignored.
 
 ## API
 

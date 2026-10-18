@@ -5,8 +5,8 @@ services:
     working_dir: /mock
     volumes:
       - ./mock:/mock:ro
-    # Add flags here to test failure handling, e.g. --fail-rate 0.2, --unstable, --not-ready 409
-    command: ["python", "-u", "mock-control-api.py", "--host", "0.0.0.0"]
+    # Add flags here to test failure handling, e.g. --async-create,--fail-rate 0.2, --unstable, --not-ready 409
+    command: ["python", "-u", "mock-control-api.py", "--host", "0.0.0.0", "--unstable"]
     ports:
       - "8787:8787"
 
@@ -17,7 +17,8 @@ services:
       - path: .env
         required: false
     environment:
-      CONTROL_API_URL: http://mock:8787
+      # The mock container, unless .env sets CONTROL_API_URL (e.g. https://seed42.app)
+      CONTROL_API_URL: ${CONTROL_API_URL:-http://mock:8787}
     volumes:
       - models:/models
     ports:

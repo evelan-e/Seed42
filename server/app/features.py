@@ -31,9 +31,31 @@ BANDS = [  # (key, label, lo Hz, hi Hz)
 ]
 
 
+# Jamendo tags that name a use or an occasion rather than how the music feels, or
+# that would steer an image prompt somewhere unwanted. Never picked or scored.
+JAMENDO_SKIP = {"advertising", "background", "children", "christmas", "commercial",
+                "corporate", "documentary", "film", "game", "holiday", "motivational",
+                "movie", "sexy", "sport", "trailer", "travel"}
+# Jamendo scores each of its 56 tags independently and they run well below 0.5,
+# so a much lower bar. A starting guess: tune it on real tracks.
+JAMENDO_MIN = 0.05
+
+
 def get_mood(embeddings, threshold=0.5, top_k=2):
-    """Up to `top_k` moods above `threshold` confidence, strongest first, or 'neutral'."""
+    """Up to `top_k` moods above the bar, strongest first, or 'neutral'; plus every score.
+
+    MOOD_MODEL=jamendo: one head scores all its tags at once, bar JAMENDO_MIN.
+    MOOD_MODEL=heads: five yes/no heads, one per mood, bar `threshold`.
+    """
     scores = {}
+    if MODELS.mood_tagger:
+        head, classes = MODELS.mood_tagger
+        threshold = JAMENDO_MIN
+        try:
+            probs = np.mean(head(embeddings), axis=0)
+            scores = {c: float(p) for c, p in zip(classes, probs) if c not in JAMENDO_SKIP}
+        except Exception:
+            pass
     for m, (head, idx) in MODELS.mood_heads.items():
         try:
             scores[m] = float(np.mean(head(embeddings), axis=0)[idx])
@@ -90,7 +112,7 @@ def extract_fast_features(y_slice, sr=config.SR, n_themes=3):
         top_idx = np.argsort(genre_probs)[::-1][:2]
         top_genres = [MODELS.genre_classes[i] for i in top_idx]
         genre_scores = [round(float(genre_probs[i]), 3) for i in top_idx]
-        mood_str, mood_scores = get_mood(embeddings) if MODELS.mood_heads else ("unavailable", {})
+        mood_str, mood_scores = get_mood(embeddings) if MODELS.mood_ok else ("unavailable", {})
         timings["essentia"] = time.perf_counter() - t
     else:
         top_genres, genre_scores, mood_str = ["unavailable"], [], "unavailable"

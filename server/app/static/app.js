@@ -110,6 +110,11 @@
     if (c.last_error) setPill(el.pillStream, "err", "error");
     else if (c.stream_id) setPill(el.pillStream, "ok", c.stream_id.slice(0, 12));
     else setPill(el.pillStream, "", "not created yet");
+    // A stream seed42 gave us is theirs to end, not ours
+    el.resetStream.disabled = c.given;
+    el.resetStream.title = c.given
+      ? "Disabled: this stream was given by seed42 (CONTROL_API_STREAM_ID)"
+      : "End the current stream; the next window creates a new one";
 
     renderHealthBody(h);
     renderScene(h.scene);
@@ -127,13 +132,14 @@
     const dl = node("dl");
     const add = (k, v, cls) => { dl.append(node("dt", k)); dl.append(node("dd", v, cls)); };
     add("Mode", h.mode === "lite" ? "Lite: Librosa only, no genre, mood or themes" : `Full, on ${h.device}`);
-    const names = { madmom: "Madmom", essentia: "Essentia", mood: "Mood heads", whisper: "Whisper" };
+    const names = { madmom: "Madmom", essentia: "Essentia", mood: "Mood", whisper: "Whisper" };
     for (const [k, v] of Object.entries(h.models)) {
       add(names[k] || k, v.state + (v.detail ? `: ${v.detail}` : ""), "state-" + v.state);
     }
     add("LLM", h.llm.enabled ? h.llm.model : "No GROQ_API_KEY. Every window uses the fallback prompt.");
     add("Control API", h.control_api.url);
-    add("Stream", h.control_api.stream_id || "Created on the first prompt sent");
+    add("Stream", h.control_api.given ? `${h.control_api.stream_id}, given by seed42`
+      : h.control_api.stream_id || "Created on the first prompt sent");
     if (h.control_api.last_error) add("Last error", h.control_api.last_error, "state-failed");
     el.healthBody.replaceChildren(dl);
   }
@@ -183,6 +189,7 @@
     renderScene(j.scene);
     const a = j.api;
     if (a && a.ok) sceneResult(`Sent, ${a.code} in ${secs(a.ms)}.`, "ok");
+    else if (a && a.superseded) sceneResult("Saved, but a newer prompt was sent before it.", "err");
     else if (a) sceneResult(`Saved, but the stream didn't take it. ${a.error || a.code}`, "err");
     else sceneResult(j.scene.locked ? "Locked. Every window re-sends this prompt." : "Unlocked. The pipeline adjusts from here.", "ok");
     clearTimeout(healthTimer); refreshHealth();
@@ -634,6 +641,7 @@
     const api = q(".win-api"), a = rec.api || {};
     let apiText, apiKind;
     if (a.skipped) { apiText = "Not sent"; apiKind = ""; }
+    else if (a.superseded) { apiText = "Replaced by a newer prompt"; apiKind = ""; }
     else if (a.ok) {
       apiText = `${a.code} in ${secs(a.ms)}` + (a.attempts > 1 ? `, ${a.attempts} tries` : "");
       apiKind = a.attempts > 1 ? "warn" : "ok";
@@ -707,7 +715,7 @@
       const sc = rec.genre_scores || [];
       fact("Genre", name, [parent, second && `then ${second}`, sc[0] != null && `p ${sc[0]}`].filter(Boolean).join(", "));
     }
-    if (rec.mood === "unavailable") fact("Mood", "Not available", "Mood heads not loaded", true);
+    if (rec.mood === "unavailable") fact("Mood", "Not available", "Mood model not loaded", true);
     else {
       const top = Object.entries(rec.mood_scores || {}).sort((x, y) => y[1] - x[1]).slice(0, 3)
         .map(([k, v]) => `${k} ${v.toFixed(2)}`).join(", ");
@@ -837,7 +845,7 @@
       const [t0, t1] = laneSegment(r, i);
       g.fillStyle = PHASE_COLOR[r.phase];
       g.fillRect(x(t0) + 1, laneY, Math.max(1, x(t1) - x(t0) - 2), laneH);
-      if (r.api && r.api.ok === false) {
+      if (r.api && r.api.ok === false && !r.api.superseded) {
         g.fillStyle = cssVar("--err");
         g.fillRect(x(t0) + 1, laneY, 3, laneH);
       }

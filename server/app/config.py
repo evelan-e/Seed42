@@ -29,6 +29,10 @@ ESSENTIA_SR = 16000     # rate the Essentia and Whisper models expect
 MODEL_DIR = os.getenv("MODEL_DIR", str(Path(__file__).resolve().parents[1] / "essentia_models"))
 WHISPER_SIZE = os.getenv("WHISPER_SIZE", "tiny")     # tiny, base, small, ...
 N_THEMES = int(os.getenv("N_THEMES", "4"))           # lyric keywords kept per window
+# heads   = five yes/no heads: happy, sad, relaxed, aggressive, party. Its prompts
+#           suited the scenes better in testing.
+# jamendo = one Essentia head scoring 56 mood and theme tags (dark, dreamy, epic, ...)
+MOOD_MODEL = os.getenv("MOOD_MODEL", "heads").strip().lower()
 
 # --- LLM: writes the image prompt (Groq, through the OpenAI SDK) ------------
 # Without a key every window uses the fallback prompt in prompt.py.
@@ -37,11 +41,15 @@ LLM_MODEL = os.getenv("LLM_MODEL", "openai/gpt-oss-120b")
 MAX_PROMPT_WORDS = int(os.getenv("MAX_PROMPT_WORDS", "40"))
 
 # --- seed42 Control API: receives the prompts --------------------------------
-# Defaults point at the mock in mock/. Change all four for the real API.
+# Defaults point at the mock in mock/. For the real API set the URL
+# (https://seed42.app) and your own seed42 email and password.
 CONTROL_API_URL = os.getenv("CONTROL_API_URL", "http://127.0.0.1:8787")
 CONTROL_API_EMAIL = os.getenv("CONTROL_API_EMAIL", "test@example.com")
 CONTROL_API_PASSWORD = os.getenv("CONTROL_API_PASSWORD", "anything")
 CONTROL_API_INITIAL_PROMPT = os.getenv("CONTROL_API_INITIAL_PROMPT", "abstract shapes, vivid, neon")
+# Empty: create our own stream (development). Set: send to this stream, the one
+# seed42 creates for a performance, and never create or end a stream.
+CONTROL_API_STREAM_ID = os.getenv("CONTROL_API_STREAM_ID", "").strip()
 
 # --- Scenes (scene.py) -------------------------------------------------------
 # Each window gets a change score from 0 (same music) to 1 (different in every way).
