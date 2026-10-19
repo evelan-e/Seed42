@@ -10,16 +10,23 @@ from . import config
 
 log = logging.getLogger("pipeline.llm")
 
-FALLBACK_PROMPT = "dark club space, sub-bass pulse, neon haze, slow camera drift"
+FALLBACK_PROMPT = "glowing jellyfish drifting in dark water, neon haze, slow camera drift"
 
 SYSTEM_PROMPT = (
     "You write prompts for a real-time SDXL-Turbo image stream. "
     "Turn the audio cue into ONE line of 8 to 12 short visual phrases separated by commas, "
     f"{config.MAX_PROMPT_WORDS} words maximum.\n"
-    "Order: main scene first, then surface materials, lighting colours, atmosphere "
-    "(fog, particles, air movement), glowing elements, and camera motion last.\n"
+    "Order: one to three imaginative subjects first, then their setting, surface materials, "
+    "lighting colours, atmosphere (fog, particles, air movement), and camera motion last.\n"
+    "The subjects are surprising things that carry the mood: creatures, animals, alien "
+    "lifeforms, plants or coral, surreal objects or machines, landscape features or cosmic bodies. "
+    "Mix kinds when there is more than one, and show how they relate (orbiting, growing from, "
+    "chasing, carried by). Translate the music into their look and movement; never picture "
+    "the music itself.\n"
     "RULES: no full sentences, no markdown, no quotes, no numbers or BPM, "
-    "no genre names, no words or text to appear in the image."
+    "no genre names, no words or text to appear in the image, "
+    "no people, crowds, dancers, figures, faces or bodies, "
+    "no clubs, lounges, dance floors, stages, speakers, subwoofers or audio visualizers."
 )
 
 _client = None
@@ -63,9 +70,14 @@ BLEND_PROMPT = SYSTEM_PROMPT + (
 )
 
 
-def generate_visual_prompt(llm_input):
-    """A fresh scene. Returns {prompt, source, ms, error}; source is 'llm', 'fallback' or 'empty-reply'."""
-    return _complete(SYSTEM_PROMPT, f"Audio cue: {llm_input}", 0.7)
+def generate_visual_prompt(llm_input, previous=None):
+    """A fresh scene. Returns {prompt, source, ms, error}; source is 'llm', 'fallback' or 'empty-reply'.
+    With `previous`, the new scene is asked to use different subjects and setting."""
+    user = f"Audio cue: {llm_input}"
+    if previous:
+        user += (f"\nPrevious scene: {previous}\n"
+                 "Write a new scene with different subjects and a different setting.")
+    return _complete(SYSTEM_PROMPT, user, 0.7)
 
 
 def evolve_visual_prompt(current, llm_input):
@@ -89,7 +101,7 @@ def _complete(system, user, temperature):
             messages=[{"role": "system", "content": system},
                       {"role": "user", "content": user}],
             temperature=temperature,
-            max_tokens=400,                           # gpt-oss counts its reasoning in this budget
+            max_tokens=1000,                          # gpt-oss counts its reasoning in this budget
             extra_body={"reasoning_effort": "low"},   # keeps reasoning short so the answer isn't cut off
         )
         text = (reply.choices[0].message.content or "").strip()

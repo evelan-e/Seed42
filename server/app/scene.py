@@ -15,6 +15,12 @@ with the features the scene was written for, and the scene is:
   revert     the next window doesn't confirm it: back to the scene from before
              the blend
 
+Time also moves the scene on, so steady music doesn't freeze it: a scene that
+hasn't changed for SCENE_DRIFT_SEC evolves anyway ("drift"), and one that has
+lasted SCENE_MAX_SEC blends and is then replaced by a scene with different
+subjects ("timed"). Times are audio seconds, so an uploaded file behaves like
+live input.
+
 A new uploaded file is a known track boundary: its first window blends from
 the previous scene and its second window always starts a new scene.
 
@@ -143,6 +149,8 @@ class SceneTracker:
         self.decision = None
         self.updated = None
         self.last_gap_end = -1.0
+        self.scene_t = None         # audio time the current scene started (None: from the next window)
+        self.changed_t = None       # audio time the prompt last changed
 
     def describe(self):
         return {"prompt": self.prompt, "scene": self.scene_id, "track": self.track,
@@ -161,6 +169,7 @@ class SceneTracker:
             self.ref = None
             self.last_gap_end = -1.0
             self.pending = None
+            self.scene_t = self.changed_t = None     # audio time restarts with each track
             if self.prompt and not self.locked:
                 # First window blends from the previous scene, second one replaces it
                 self.pending = {"before": self.prompt, "track": True, "forced": True, "boundary": True}
@@ -175,6 +184,7 @@ class SceneTracker:
                 self.manual = True
                 self.pending = None
                 self.ref = None             # the next window becomes its reference
+                self.scene_t = self.changed_t = None
                 self.decision = "manual"
                 self.updated = time.time()
             if locked is not None:
@@ -187,6 +197,8 @@ class SceneTracker:
         """Decides what this window sends, fills in the prompt fields of `rec`
         and returns the prompt (None = send nothing)."""
         with self.lock:
+            if self.prompt and self.scene_t is None:
+                self.scene_t = self.changed_t = rec["t_end"]
             score, parts = change_score(self.ref, rec) if self.ref else (None, {})
             gap_at = None
             if gap and rec["t_start"] + gap[0] >= self.last_gap_end:   # an overlapping window sees the same gap again
@@ -200,8 +212,10 @@ class SceneTracker:
                 self.pending = None
 
             llm = {"prompt": None, "source": None, "ms": 0, "error": None}
-            if decision in ("initial", "new_scene", "new_track"):
+            if decision == "initial":
                 llm = generate_visual_prompt(rec["llm_input"])
+            elif decision in ("new_scene", "new_track"):
+                llm = generate_visual_prompt(rec["llm_input"], previous=self.prompt)
             elif decision == "evolve":
                 llm = evolve_visual_prompt(self.prompt, rec["llm_input"])
             elif decision == "blend":
@@ -264,8 +278,16 @@ class SceneTracker:
         if score >= change_at:
             self.pending = {"before": self.prompt, "track": False, "forced": False}
             return "blend", f"Change {score} is over {change_at}. Blending; the next window confirms or reverts."
+        t = rec["t_end"]
+        if config.SCENE_MAX_SEC > 0 and t - self.scene_t >= config.SCENE_MAX_SEC:
+            self.pending = {"before": self.prompt, "track": False, "forced": True}
+            return "blend", (f"The scene has run {t - self.scene_t:.0f} s (limit {config.SCENE_MAX_SEC:.0f} s). "
+                             "Blending; the next window replaces it with new subjects.")
         if score >= evolve_at:
             return "evolve", f"Change {score} is between {evolve_at} and {change_at}, so the scene is adjusted."
+        if config.SCENE_DRIFT_SEC > 0 and t - self.changed_t >= config.SCENE_DRIFT_SEC:
+            return "evolve", (f"Change {score} is small, but the prompt hasn't changed for "
+                              f"{t - self.changed_t:.0f} s, so the scene drifts a little.")
         return "hold", f"Change {score} is under {evolve_at}. Same prompt re-sent."
 
     def _commit(self, decision, rec, new_prompt):
@@ -275,6 +297,9 @@ class SceneTracker:
             self.updated = time.time()
         if decision in ("initial", "new_scene", "new_track"):
             self.scene_id += 1
+            self.scene_t = rec["t_end"]
+        if new_prompt or decision == "revert":
+            self.changed_t = rec["t_end"]
         if decision in ("initial", "new_scene", "new_track", "evolve") or (decision == "blend" and self.ref is None):
             self.ref = {k: rec[k] for k in REF_KEYS}
         self.decision = decision
