@@ -32,14 +32,16 @@ There is one tracker for the server, like the one stream in control.py.
 """
 import logging
 import math
+import random
 import threading
 import time
+from collections import deque
 
 import librosa
 import numpy as np
 
 from . import config
-from .prompt import blend_visual_prompt, evolve_visual_prompt, generate_visual_prompt
+from .prompt import THEMES, blend_visual_prompt, evolve_visual_prompt, generate_visual_prompt
 
 log = logging.getLogger("pipeline.scene")
 
@@ -138,6 +140,8 @@ class SceneTracker:
         self.lock = threading.Lock()
         self.track = 0
         self.scene_id = 0
+        self.recent_themes = deque(maxlen=6)      # kept across tracks, so a set keeps varying
+        self.recent_subjects = deque(maxlen=8)
         self._clear()
 
     def _clear(self):
@@ -212,10 +216,15 @@ class SceneTracker:
                 self.pending = None
 
             llm = {"prompt": None, "source": None, "ms": 0, "error": None}
-            if decision == "initial":
-                llm = generate_visual_prompt(rec["llm_input"])
-            elif decision in ("new_scene", "new_track"):
-                llm = generate_visual_prompt(rec["llm_input"], previous=self.prompt)
+            if decision in ("initial", "new_scene", "new_track"):
+                theme = random.choice([t for t in THEMES if t not in self.recent_themes])
+                llm = generate_visual_prompt(rec["llm_input"],
+                                             previous=self.prompt if decision != "initial" else None,
+                                             theme=theme, avoid=list(self.recent_subjects))
+                if llm["source"] == "llm":
+                    self.recent_themes.append(theme)
+                    self.recent_subjects.extend(p.strip() for p in llm["prompt"].split(",")[:2])
+                    note = f"{note} Theme: {theme}."
             elif decision == "evolve":
                 llm = evolve_visual_prompt(self.prompt, rec["llm_input"])
             elif decision == "blend":

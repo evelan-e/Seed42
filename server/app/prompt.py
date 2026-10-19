@@ -10,7 +10,7 @@ from . import config
 
 log = logging.getLogger("pipeline.llm")
 
-FALLBACK_PROMPT = "glowing jellyfish drifting in dark water, neon haze, slow camera drift"
+FALLBACK_PROMPT = "paper lanterns drifting over a dark lake, soft haze, slow camera drift"
 
 SYSTEM_PROMPT = (
     "You write prompts for a real-time SDXL-Turbo image stream. "
@@ -26,8 +26,19 @@ SYSTEM_PROMPT = (
     "RULES: no full sentences, no markdown, no quotes, no numbers or BPM, "
     "no genre names, no words or text to appear in the image, "
     "no people, crowds, dancers, figures, faces or bodies, "
-    "no clubs, lounges, dance floors, stages, speakers, subwoofers or audio visualizers."
+    "no clubs, lounges, dance floors, stages, speakers, subwoofers or audio visualizers, "
+    "and use glowing, luminous, crystal or neon at most once."
 )
+
+# A new scene draws its subjects from one of these, so the LLM doesn't settle on
+# the same few favourites. scene.py picks one that wasn't used recently.
+THEMES = [
+    "deep ocean", "coral reef", "desert dunes", "arctic ice", "rainforest canopy",
+    "volcanic land", "outer space", "ancient ruins", "clockwork machines", "mushroom forest",
+    "storm sky", "mountain peaks", "swamp and marsh", "savanna at dusk", "paper and origami",
+    "glass and mirrors", "mythical beasts", "giant insects up close", "birds in flight",
+    "underground caves", "floating islands", "abandoned city", "autumn woodland", "tidal shore",
+]
 
 _client = None
 if config.GROQ_API_KEY:
@@ -70,14 +81,19 @@ BLEND_PROMPT = SYSTEM_PROMPT + (
 )
 
 
-def generate_visual_prompt(llm_input, previous=None):
+def generate_visual_prompt(llm_input, previous=None, theme=None, avoid=()):
     """A fresh scene. Returns {prompt, source, ms, error}; source is 'llm', 'fallback' or 'empty-reply'.
-    With `previous`, the new scene is asked to use different subjects and setting."""
+    `theme` sets where the subjects come from; `previous` and `avoid` (recent subjects)
+    keep the new scene from repeating earlier ones."""
     user = f"Audio cue: {llm_input}"
+    if theme:
+        user += f"\nTheme for this scene: {theme}. Take the subjects and setting from this theme."
     if previous:
         user += (f"\nPrevious scene: {previous}\n"
                  "Write a new scene with different subjects and a different setting.")
-    return _complete(SYSTEM_PROMPT, user, 0.7)
+    if avoid:
+        user += f"\nDo not use any of these subjects again: {'; '.join(avoid)}."
+    return _complete(SYSTEM_PROMPT, user, 0.8)
 
 
 def evolve_visual_prompt(current, llm_input):
