@@ -6,7 +6,7 @@ services:
     volumes:
       - ./mock:/mock:ro
     # Add flags here to test failure handling, e.g. --async-create,--fail-rate 0.2, --unstable, --not-ready 409
-    command: ["python", "-u", "mock-control-api.py", "--host", "0.0.0.0", "--unstable"]
+    command: ["python", "-u", "mock-control-api.py", "--host", "0.0.0.0"]
     ports:
       - "8787:8787"
 

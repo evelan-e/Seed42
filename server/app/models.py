@@ -36,8 +36,7 @@ for _abc in ("MutableSequence", "Iterable", "Callable", "MutableMapping", "Mappi
         setattr(collections, _abc, getattr(collections.abc, _abc))
 
 MODEL_BASE = "https://essentia.upf.edu/models"
-MOOD_NAMES = ["happy", "sad", "relaxed", "aggressive", "party"]   # MOOD_MODEL=heads
-JAMENDO = "mtg_jamendo_moodtheme-discogs-effnet-1"                 # MOOD_MODEL=jamendo
+MOOD_NAMES = ["happy", "sad", "relaxed", "aggressive", "party"]
 STOPWORDS = set("a an the and or but if then than that this in on into to for with "
                 "without about oh yeah uh ah hey".split())
 
@@ -60,8 +59,7 @@ class Models:
         self.embedding_model = None
         self.genre_head = None
         self.genre_classes = []
-        self.mood_heads = {}        # MOOD_MODEL=heads: {mood: (head, index of "yes")}
-        self.mood_tagger = None     # MOOD_MODEL=jamendo: (head, tag names)
+        self.mood_heads = {}        # {mood: (head, index of "yes")}
         self.whisper = None
 
     # -- helpers -----------------------------------------------------------
@@ -127,12 +125,9 @@ class Models:
             "genre": ("classification-heads/genre_discogs400", "genre_discogs400-discogs-effnet-1.pb"),
             "genre_meta": ("classification-heads/genre_discogs400", "genre_discogs400-discogs-effnet-1.json"),
         }
-        for ext in (".pb", ".json"):
-            if config.MOOD_MODEL == "jamendo":
-                files[f"jamendo{ext}"] = ("classification-heads/mtg_jamendo_moodtheme", f"{JAMENDO}{ext}")
-            else:
-                for m in MOOD_NAMES:
-                    files[f"mood_{m}{ext}"] = (f"classification-heads/mood_{m}", f"mood_{m}-discogs-effnet-1{ext}")
+        for m in MOOD_NAMES:
+            for ext in (".pb", ".json"):
+                files[f"mood_{m}{ext}"] = (f"classification-heads/mood_{m}", f"mood_{m}-discogs-effnet-1{ext}")
         for subdir, fname in files.values():
             dest = os.path.join(config.MODEL_DIR, fname)
             if not os.path.exists(dest):
@@ -165,14 +160,7 @@ class Models:
             self._set("mood", "failed", "needs the Essentia embedding model")
             return
 
-        # Mood loads separately so a mood failure never disables genre
-        if config.MOOD_MODEL == "jamendo":
-            try:
-                self.mood_tagger = self._mood_head(TensorflowPredict2D, JAMENDO)
-                self._set("mood", "ready", f"Jamendo, {len(self.mood_tagger[1])} mood and theme tags")
-            except Exception as e:
-                self._set("mood", "failed", f"Jamendo mood/theme: {e}")
-            return
+        # Mood heads load separately so a mood failure never disables genre
         skipped = []
         for m in MOOD_NAMES:
             try:

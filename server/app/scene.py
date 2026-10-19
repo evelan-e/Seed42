@@ -69,12 +69,6 @@ def _mood_change(a, b):
     keys = ma.keys() & mb.keys()
     if not keys:
         return None
-    if len(keys) > 5:
-        # Jamendo: dozens of tags with small scores, so an average difference
-        # barely moves. Compare the top three tags instead: same three scores 0,
-        # none in common scores 1.
-        top = lambda m: set(sorted(keys, key=m.get, reverse=True)[:3])
-        return 1 - len(top(ma) & top(mb)) / 3
     return min(1.0, sum(abs(ma[k] - mb[k]) for k in keys) / len(keys) / 0.25)
 
 

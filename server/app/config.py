@@ -29,11 +29,6 @@ ESSENTIA_SR = 16000     # rate the Essentia and Whisper models expect
 MODEL_DIR = os.getenv("MODEL_DIR", str(Path(__file__).resolve().parents[1] / "essentia_models"))
 WHISPER_SIZE = os.getenv("WHISPER_SIZE", "tiny")     # tiny, base, small, ...
 N_THEMES = int(os.getenv("N_THEMES", "4"))           # lyric keywords kept per window
-# heads   = five yes/no heads: happy, sad, relaxed, aggressive, party. Its prompts
-#           suited the scenes better in testing.
-# jamendo = one Essentia head scoring 56 mood and theme tags (dark, dreamy, epic, ...)
-MOOD_MODEL = os.getenv("MOOD_MODEL", "heads").strip().lower()
-
 # --- LLM: writes the image prompt (Groq, through the OpenAI SDK) ------------
 # Without a key every window uses the fallback prompt in prompt.py.
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
