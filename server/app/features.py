@@ -17,6 +17,7 @@ import soundfile as sf
 from . import config
 from .models import MODELS, STOPWORDS
 
+# Loudness thresholds for the four energy phases
 PHASES = [  # (upper RMS bound, key, label)
     (0.15, "breakdown", "Low Energy / Breakdown Phase"),
     (0.40, "groove", "Moderate Energy / Steady Groove Phase"),
@@ -24,38 +25,18 @@ PHASES = [  # (upper RMS bound, key, label)
     (float("inf"), "drop", "Peak Energy / Drop Phase"),
 ]
 
+# Frequency bands; the loudest one describes the track's focus
 BANDS = [  # (key, label, lo Hz, hi Hz)
-    ("sub", "Low-End / Sub-Bass Focus (60 Hz - 120 Hz)", 20, 120),
+    ("sub", "Low-End / Sub-Bass Focus (20 Hz - 120 Hz)", 20, 120),
     ("mid", "Mid-Range / Vocal & Synth Focus (120 Hz - 2 kHz)", 120, 2000),
     ("high", "High-End / Percussion & Hi-Hat Focus (2 kHz - 8 kHz)", 2000, 8000),
 ]
 
 
-# Jamendo tags that name a use or an occasion rather than how the music feels, or
-# that would steer an image prompt somewhere unwanted. Never picked or scored.
-JAMENDO_SKIP = {"advertising", "background", "children", "christmas", "commercial",
-                "corporate", "documentary", "film", "game", "holiday", "motivational",
-                "movie", "sexy", "sport", "trailer", "travel"}
-# Jamendo scores each of its 56 tags independently and they run well below 0.5,
-# so a much lower bar. A starting guess: tune it on real tracks.
-JAMENDO_MIN = 0.05
-
-
 def get_mood(embeddings, threshold=0.5, top_k=2):
-    """Up to `top_k` moods above the bar, strongest first, or 'neutral'; plus every score.
-
-    MOOD_MODEL=jamendo: one head scores all its tags at once, bar JAMENDO_MIN.
-    MOOD_MODEL=heads: five yes/no heads, one per mood, bar `threshold`.
-    """
+    """Up to `top_k` moods above `threshold` confidence, strongest first, or 'neutral';
+    plus every score. One yes/no head per mood."""
     scores = {}
-    if MODELS.mood_tagger:
-        head, classes = MODELS.mood_tagger
-        threshold = JAMENDO_MIN
-        try:
-            probs = np.mean(head(embeddings), axis=0)
-            scores = {c: float(p) for c, p in zip(classes, probs) if c not in JAMENDO_SKIP}
-        except Exception:
-            pass
     for m, (head, idx) in MODELS.mood_heads.items():
         try:
             scores[m] = float(np.mean(head(embeddings), axis=0)[idx])
