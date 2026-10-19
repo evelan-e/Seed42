@@ -193,6 +193,8 @@ class StreamLink:
 
         code, body = res["code"], res["body"]
         ok = code == 200
+        log.info("sent %s -> %s x%s (%d words) %r | %s", sid, code, res["attempts"],
+                 len(prompt.split()), prompt, str(body)[:160])
         error = None
         if code == 401:
             self.client.token = None    # log in again next time, same stream
