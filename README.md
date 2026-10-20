@@ -119,7 +119,7 @@ The first build takes several minutes while Madmom compiles. The first start the
 downloads the Essentia and Whisper models into a Docker volume, so later starts are
 fast. It is ready when the log shows `Uvicorn running on http://0.0.0.0:8000`.
 
-**6. Open http://localhost:8000**
+**6. Open `http://localhost:8000`
 
 The pills at the top right show what's working. **Models** counts up while they load,
 then shows **ready**. **LLM** shows the model name (**fallback prompt** means no key).
