@@ -17,7 +17,7 @@ services:
       - path: .env
         required: false
     environment:
-      # The mock container, unless .env sets CONTROL_API_URL (e.g. https://seed42.app)
+      # The mock container, unless .env sets CONTROL_API_URL (e.g. https://www.seed42.app)
       CONTROL_API_URL: ${CONTROL_API_URL:-http://mock:8787}
     volumes:
       - models:/models

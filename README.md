@@ -7,7 +7,7 @@ the picture follows what is playing.
 ## How it works
 
 Audio comes in from an uploaded track or live from a microphone, desk or DJ software.
-It is cut into overlapping windows (by default 20 seconds long, one every 10 seconds),
+It is cut into overlapping windows (by default 10 seconds long, one every 5 seconds),
 and each window goes through the same five steps. Every file below is in `server/app/`.
 
 ```
@@ -192,7 +192,7 @@ unavailable. It starts in seconds, for work on the page or the Control API path.
   (see [Live input from a desk or DJ software](#live-input-from-a-desk-or-dj-software)).
   Speech processing (echo cancellation, noise suppression, auto gain) is switched off so
   music reaches the pipeline unchanged.
-- **Window** and **Step** set the analysis window and how far it moves. 20/10 is the
+- **Window** and **Step** set the analysis window and how far it moves. 10/5 is the
   default; 60/60 analyses one minute at a time.
 - **Generate prompt** and **Send to stream** let you switch off the LLM or Control API
   step for a run.
@@ -249,7 +249,7 @@ Things to know:
 
 If a window is still being analysed when the next one is due, the next one is skipped
 and marked on the page. Each row shows how long analysis took; when that's longer than
-the step, the row says so. On CPU, expect a few seconds per 20 s window with every
+the step, the row says so. On CPU, expect a few seconds per 10 s window with every
 model loaded, so a 5 s step will skip windows. That measurement is what you need
 before settling window and step for real live use.
 
@@ -260,10 +260,10 @@ The prompt is a scene that lasts, not a new image every window
 change score against the music the scene was written for (tempo, genre, mood,
 energy, loudest band), and the scene is:
 
-- **held** under `SCENE_EVOLVE_AT` (0.25): the same prompt is re-sent, so the stream
+- **held** under `SCENE_EVOLVE_AT` (0.2): the same prompt is re-sent, so the stream
   is never left without one
-- **adjusted** from 0.25: the LLM revises the current prompt, changing a few phrases
-- **blended** from `SCENE_CHANGE_AT` (0.5), or after a gap of near silence: a halfway
+- **adjusted** from 0.2: the LLM revises the current prompt, changing a few phrases
+- **blended** from `SCENE_CHANGE_AT` (0.4), or after a gap of near silence: a halfway
   prompt, then **replaced** if the next window confirms the change, or **reverted** if
   it doesn't
 
@@ -415,7 +415,7 @@ implements: log in at `/api/auth`, create a stream, `PATCH /api/streams` with
 `{id, params}`. Don't edit the mock; it is seed42's. Switching to the real API is
 only `.env`:
 
-- **Testing live with your own account:** set `CONTROL_API_URL=https://seed42.app`
+- **Testing live with your own account:** set `CONTROL_API_URL=https://www.seed42.app`
   and your seed42 `CONTROL_API_EMAIL` and `CONTROL_API_PASSWORD`. The app creates a
   stream of its own, as with the mock.
 - **A real performance:** seed42's own client creates the stream and gives you its
@@ -430,7 +430,6 @@ Leave `CONTROL_API_URL` unset to use the mock, under Docker or not.
 The mock is deliberately strict. Change its flags in `docker-compose.yml`, or run it
 yourself with `python mock/mock-control-api.py --help`:
 
-- `--fail-rate 0.2` returns 502 on a fifth of calls
 - `--unstable` ends streams after 45 s and makes DELETE fail
 - `--not-ready 409` uses the other legal not-ready code
 - `--async-create` answers 202 on create and requires polling
@@ -516,8 +515,8 @@ can call them the same way. Routes are in `server/app/main.py`, the live protoco
    | Field | Default | Meaning |
    |---|---|---|
    | `file` | required | The audio file, up to `MAX_UPLOAD_MB` (200 MB) |
-   | `window_sec` | 20 | Window length in seconds, at least 2 |
-   | `step_sec` | 10 | Seconds between window starts, at least 1 |
+   | `window_sec` | 10 | Window length in seconds, at least 2 |
+   | `step_sec` | 5 | Seconds between window starts, at least 1 |
    | `use_llm` | true | Write prompts with the LLM |
    | `send_to_stream` | true | Send each prompt to the Control API |
 
@@ -533,7 +532,7 @@ can call them the same way. Routes are in `server/app/main.py`, the live protoco
 
 Open a WebSocket to `/api/live`, then:
 
-1. Send a text message: `{"type": "start", "window_sec": 20, "step_sec": 10, "use_llm": true, "send_to_stream": true}`.
+1. Send a text message: `{"type": "start", "window_sec": 10, "step_sec": 5, "use_llm": true, "send_to_stream": true}`.
 2. Send the audio as binary messages: mono Float32 samples at 22050 Hz, in chunks of
    about half a second.
 3. Receive text messages:

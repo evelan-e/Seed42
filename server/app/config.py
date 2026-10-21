@@ -37,7 +37,7 @@ MAX_PROMPT_WORDS = int(os.getenv("MAX_PROMPT_WORDS", "40"))
 
 # --- seed42 Control API: receives the prompts --------------------------------
 # Defaults point at the mock in mock/. For the real API set the URL
-# (https://seed42.app) and your own seed42 email and password.
+# (https://www.seed42.app) and your own seed42 email and password.
 CONTROL_API_URL = os.getenv("CONTROL_API_URL", "http://127.0.0.1:8787")
 CONTROL_API_EMAIL = os.getenv("CONTROL_API_EMAIL", "test@example.com")
 CONTROL_API_PASSWORD = os.getenv("CONTROL_API_PASSWORD", "anything")
@@ -48,14 +48,14 @@ CONTROL_API_STREAM_ID = os.getenv("CONTROL_API_STREAM_ID", "").strip()
 
 # --- Scenes (scene.py) -------------------------------------------------------
 # Each window gets a change score from 0 (same music) to 1 (different in every way).
-SCENE_EVOLVE_AT = float(os.getenv("SCENE_EVOLVE_AT", "0.25"))      # at or above: adjust the scene
-SCENE_CHANGE_AT = float(os.getenv("SCENE_CHANGE_AT", "0.5"))       # at or above: blend, then replace if it lasts
+SCENE_EVOLVE_AT = float(os.getenv("SCENE_EVOLVE_AT", "0.2"))       # at or above: adjust the scene
+SCENE_CHANGE_AT = float(os.getenv("SCENE_CHANGE_AT", "0.4"))       # at or above: blend, then replace if it lasts
 SCENE_GAP_SEC = float(os.getenv("SCENE_GAP_SEC", "1.5"))           # near silence this long suggests a track change
 SCENE_SILENCE_RMS = float(os.getenv("SCENE_SILENCE_RMS", "0.01"))  # window energy under this counts as silence
 SCENE_MAX_SEC = float(os.getenv("SCENE_MAX_SEC", "60"))            # a scene this old is replaced even if the music holds (0 = never)
 SCENE_DRIFT_SEC = float(os.getenv("SCENE_DRIFT_SEC", "15"))        # evolve at least this often within a scene (0 = only when the music changes)
 
 # --- Test page ---------------------------------------------------------------
-DEFAULT_WINDOW_SEC = float(os.getenv("DEFAULT_WINDOW_SEC", "20"))  # what the window and step boxes start at
-DEFAULT_STEP_SEC = float(os.getenv("DEFAULT_STEP_SEC", "10"))
+DEFAULT_WINDOW_SEC = float(os.getenv("DEFAULT_WINDOW_SEC", "10"))  # what the window and step boxes start at
+DEFAULT_STEP_SEC = float(os.getenv("DEFAULT_STEP_SEC", "5"))
 MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "200"))
