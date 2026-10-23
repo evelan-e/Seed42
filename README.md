@@ -303,8 +303,8 @@ sent to the Control API.
 4. Run one of:
 
    ```bash
-   docker compose run --rm eval
-   docker compose run --rm eval --judge
+   docker compose run --rm eval                         # tracks in eval/tracks
+   docker compose run --rm eval eval/tracks/tagged      # another folder of tracks
    ```
 
    The first run builds the image and loads the models; after that it prints one line
@@ -312,7 +312,6 @@ sent to the Control API.
 
 | Option | What it does |
 |---|---|
-| `--judge` | Also scores every prompt from both pipelines with the LLM, 1 to 5 (two LLM calls per window) |
 | `--window 20 --step 10` | Window length and the gap between window starts, in seconds |
 | `--no-llm` | Runs the refined pipeline without the LLM |
 | `--labels path.csv` | A labels file somewhere other than `eval/tracks/labels.csv` |
@@ -358,6 +357,18 @@ The header gives the run: number of tracks and windows, window and step, the mod
 models loaded, and how many prompts the LLM wrote. If a model shows `failed` or
 `skipped`, the refined column is missing that feature.
 
+It has the same parts as the notebook's evaluation (section 8):
+
+- **In short**: speed, variety of prompts, scene changes and why, tempo stability.
+- **1. Run time**: total and per-window processing time, the share of windows finished
+  within the step (under 100% means it falls behind live audio), where the time goes per
+  stage (Librosa, bands, Madmom, Essentia, Whisper, LLM), and per track.
+- **2. What changes on screen**: distinct prompts, prompt and scene changes per minute,
+  scene changes split by cause (track changed, music changed, `SCENE_MAX_SEC` timer),
+  windows that kept the same prompt, tempo jumps (a 25%+ change between windows), and
+  LLM failures.
+- **3. Accuracy**: the rows below that need `labels.csv`.
+
 | Metric | What it measures | Better |
 |---|---|---|
 | Tempo accuracy, within 4% | Share of labelled windows whose tempo is within 4% of `bpm`. Baseline uses Librosa, refined uses Madmom. | Higher |
@@ -367,19 +378,12 @@ models loaded, and how many prompts the LLM wrote. If a model shows `failed` or
 | Scene changes away from a track change | Scene changes in files with `boundaries` that aren't near one: false alarms. | Lower |
 | Scene changes per minute | How often a new scene starts. For the baseline, any change of its template prompt; for refined, a new scene or new track, not the first scene of each track. Within a single song this should be low. | Lower within a song |
 | Prompt changes per minute | How often the prompt text changes at all, including refined's small adjustments (evolve and blend). Higher here with few scene changes means the picture follows the music without jumping. | Neither: read with the row above |
-| Prompt fit, LLM judge (1-5) | Average score the LLM gives each prompt for how well it fits the music. Only with `--judge`. | Higher |
 | Time per window | Average processing time per window. Baseline counts the Librosa steps; refined counts every model plus the LLM call. In live mode it has to stay under the step (10 s by default). | Lower |
 
 `n/a` means the run had nothing to score that row with, usually missing labels.
 
-Two cautions when reporting results:
-
-- The judge sees the refined pipeline's description of the music, and the refined
-  prompt was written from that same description, so it favours the refined prompt.
-  Treat it as a guide, or back it up with people rating prompts without knowing which
-  pipeline wrote them.
-- Results from a few tracks are anecdotes. Use enough tracks, in enough genres, for the
-  numbers to mean something.
+Results from a few tracks are anecdotes. Use enough tracks, in enough genres, for the
+numbers to mean something.
 
 #### windows.csv
 
@@ -403,7 +407,10 @@ extension, to see it as columns.
 | `base_changed`, `ref_changed` | Whether the prompt differs from the previous window's |
 | `base_scene_start`, `ref_scene_start` | Whether a new scene started in this window |
 | `base_ms`, `ref_ms` | Processing time for this window, in milliseconds |
-| `base_judge`, `ref_judge` | LLM fit score 1 to 5, with `--judge` |
+| `ref_scene_cause`, `ref_note` | Why a scene started (`track`, `music` or `timer`), and scene tracking's explanation of its decision |
+| `base_tempo_jump`, `ref_tempo_jump` | Whether the tempo moved 25% or more from the previous window |
+| `librosa_ms` … `whisper_ms`, `llm_ms` | Time spent in each stage of the refined pipeline |
+| `llm_error` | The LLM's error, when it failed and the scene was held |
 
 For a report, a few rows of `base_prompt` next to `ref_prompt`, and the `base_bpm` and
 `ref_bpm` columns charted over time, show the difference well.
